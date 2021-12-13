@@ -45,17 +45,13 @@ sub_eq <- function(eq = 'K * d', val, vars = list(K = KK, d = dd), ...) {
   objs <- setdiff(ls(), c('eq', 'vars', 'val'))
   f <- eval(parse(text = eq))
   f_tex <- Ryacas::tex(f)
-  for (i in 1:length(objs)) {
-    s <- gsub('+[\\{_,.\\}]',
-              'abcxyz', get(objs[i]))
-    assign(objs[i], gsub(' _', '', s))
-  }
-  ff <- eval(parse(text = eq))
-  ff_tex <- Ryacas::tex(f)
+  val_names <- names(val)
+  new_names <- gsub('+[\\{_,. \\}]', 'abcdefg', val_names)
+  val_sym <- sapply(val_names, function(x) Ryacas::tex(Ryacas::ysym(x)))
   for (i in 1:length(val)) {
-    ff_tex <- gsub(paste('\\mathrm{', objs[i], '}'), objs[i], ff_tex, fixed = T)
-    str <- paste(names(val[i]), val[i], sep = ' = ')
-    eq <- eval(parse(text = paste0('tex_sub(eq, ', str, ')')))
+    f_tex <- gsub(val_sym[i], new_names[i], f_tex, fixed = T)
+    str <- paste(new_names[i], val[i], sep = ' = ')
+    f_tex <- eval(parse(text = paste0('tex_sub(f_tex, ', str, ')')))
   }
-  return(eq)
+  return(f_tex)
 }
