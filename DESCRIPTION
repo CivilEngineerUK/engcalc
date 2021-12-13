@@ -1,0 +1,15 @@
+Package: engcalc
+Title: Engineering Calculations in `R`
+Version: 0.0.0.9000
+Authors@R: 
+    person("Michael", "Rustell", , "michael.rustell@brunel.ac.uk", role = c("aut", "cre"),
+           comment = c(ORCID = "YOUR-ORCID-ID"))
+Description:
+  Engineers typically need to show working out as part of the solution process for quality assurance and checking. 
+  `engcalc` uses the symbolic manipulation capability of the `Ryacas` package to solve engineering calculations
+  such as those found in structural engineering or other technical disciplines and it enables the user to also see the
+  substituted, but not solved equation so that the origin of each variable is traceable and the solution can be validated and verified.
+License: GPL (>= 3)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.2
