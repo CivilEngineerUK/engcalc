@@ -19,6 +19,7 @@ the function will substitute variables for numerical values, but not solve
 the equation.
 }
 \examples{
+# Example 1
 eq <- Ryacas::ysym(('(a * b) / c'))
 tex_sub(Ryacas::tex(eq), a = 4, b = 3, c = 2)
 }

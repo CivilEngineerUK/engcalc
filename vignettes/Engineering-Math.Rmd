@@ -1,0 +1,70 @@
+---
+title: "Engineering Math in `engcalc`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Engineering-Math}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(engcalc)
+library(Ryacas)
+library(magrittr)
+```
+
+# Use of `engcalc`
+
+Engineers typically need to shown working for quality assurance and teaching purposes purposes. The `Ryacas` package implements the `YACAS` software in `R` and provides many useful symbolic operations such as integration, differentiation and matrix multiplication. The `engcalc` package uses `Ryacas` to derive outputs and provides the substituted working out to show the processes that are undertaken.
+
+It is easy to show the working out process of arbirtary calculations using the `engcalc` package.
+
+## Example 1
+
+Here is a stress tensor $\sigma$ and some reference areas $A$ over which the stresses are applied:
+
+```{r,  results  = 'asis'}
+xyz <- c('x', 'y', 'z')
+sigma <-
+  sapply(xyz, function(x)
+    paste('theta_{', xyz, ',', x, '}', sep = ''))
+
+A <- c('A_1', 'A_2', 'A_3')
+
+sigma %>%
+  ysym() %>%
+  tex() %>%
+  paste0('$$ \\sigma = ', ., '$$') %>%
+  cat()
+
+A %>%
+  ysym() %>%
+  paste0('$$ A = ', ., '$$') %>%
+  cat()
+```
+
+We now assign some values to the variables in the tensor and the areas:
+
+
+```{r vals}
+vals <- 1:12
+names(vals) <- c(sigma, A)
+```
+
+And now we can solve for the forces that would result in these stresses over these areas:
+
+```{r result, results = 'asis'}
+results <- sub_eq('s * a', vals, s = ysym(sigma), a = ysym(A))
+
+y <- lapply(results, function(x) {x %>%
+  paste0('$$ F = ', ., '$$') %>%
+  cat()
+})
+```
