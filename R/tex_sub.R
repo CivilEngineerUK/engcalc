@@ -17,12 +17,6 @@ tex_sub <- function(x, ...) {
   gsub("(\\d) (\\d)", "\\1 \\\\bullet \\2", y)
 }
 
-#' Same as `tex_sub` though provides a list to function
-tex_sub_2 <- function(x, z) {
-  y <- gsubfn::gsubfn("(\\w+)", z, x)
-  gsub("(\\d) (\\d)", "\\1 \\\\bullet \\2", y)
-}
-
 # a structural engineering beam stiffness matrix
 KK <- matrix(c('12 * EI/L^3', '6 * EI/L^2', '-12 * EI/L^3', '6 * EI/L^2',
               '6 * EI/L^2', '4 * EI/L', '-6 * EI/L^2', '2 * EI/L',
@@ -33,7 +27,8 @@ KK <- ysym(KK)
 
 # a structural engineering beam displacement vector
 # with typical notations for conversion to latex
-dd <- c('v_{1}', 'theta_{1}', 'v_{x, z}', 'theta_{x, z}')
+dd <- c('v_{1}', 'theta_{1}', 'v_{x, z}', 'theta_{x, z}') %>%
+  ysym()
 
 val <- 3:8
 names(val) <- c(dd, 'EI', 'L')
@@ -47,18 +42,22 @@ sub_eq <- function(eq = 'K * d', val, vars = list(K = KK, d = dd), ...) {
   f_tex <- Ryacas::tex(f)
   val_names <- names(val)
   new_names <- gsub('+[\\{_,. \\}]', 'abcdefg', val_names)
+  eq_unsolved <- eq
   for (i in 1:length(objs)) {
+    eq_unsolved <-
+      gsub(objs[i], Ryacas::tex(get(objs[i])), eq_unsolved, fixed = TRUE)
     obj <- get(objs[i])
     for (k in 1:length(obj)) {
-      obj[k] <- stringi::stri_replace(obj[k], val_names, new_names)
-      assign(objs[i], obj[k])
+      for (j in 1:length(val_names)) {
+        obj[k] <- gsub(val_names[j], new_names[j], obj[k], fixed = TRUE)
+      }
     }
+    assign(objs[i], obj)
   }
   ff <- eval(parse(text = eq))
-  ff_tex <- Ryacas::tex(f)
-  
-  val_names <- names(val)
-  new_names <- gsub('+[\\{_,. \\}]', 'abcdefg', val_names)
+  ff_tex <- Ryacas::tex(ff)
+  eq_unsolved <- gsub('*', '\\bullet', eq_unsolved, fixed = TRUE)
+
   val_sym <- sapply(val_names, function(x) Ryacas::tex(Ryacas::ysym(x)))
   for (i in 1:length(val)) {
     f_tex <- gsub(val_sym[i], new_names[i], f_tex, fixed = T)
@@ -68,7 +67,3 @@ sub_eq <- function(eq = 'K * d', val, vars = list(K = KK, d = dd), ...) {
   return(f_tex)
 }
 
-replace_vectored <- function(string, pattern, replacement, ...) {
-  sapply(string, function(x)
-    stringi::stri_replace(x, pattern, replacement, ...))
-}
