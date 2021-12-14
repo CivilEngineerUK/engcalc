@@ -47,6 +47,18 @@ sub_eq <- function(eq = 'K * d', val, vars = list(K = KK, d = dd), ...) {
   f_tex <- Ryacas::tex(f)
   val_names <- names(val)
   new_names <- gsub('+[\\{_,. \\}]', 'abcdefg', val_names)
+  for (i in 1:length(objs)) {
+    obj <- get(objs[i])
+    for (k in 1:length(obj)) {
+      obj[k] <- stringi::stri_replace(obj[k], val_names, new_names)
+      assign(objs[i], obj[k])
+    }
+  }
+  ff <- eval(parse(text = eq))
+  ff_tex <- Ryacas::tex(f)
+  
+  val_names <- names(val)
+  new_names <- gsub('+[\\{_,. \\}]', 'abcdefg', val_names)
   val_sym <- sapply(val_names, function(x) Ryacas::tex(Ryacas::ysym(x)))
   for (i in 1:length(val)) {
     f_tex <- gsub(val_sym[i], new_names[i], f_tex, fixed = T)
@@ -54,4 +66,9 @@ sub_eq <- function(eq = 'K * d', val, vars = list(K = KK, d = dd), ...) {
     f_tex <- eval(parse(text = paste0('tex_sub(f_tex, ', str, ')')))
   }
   return(f_tex)
+}
+
+replace_vectored <- function(string, pattern, replacement, ...) {
+  sapply(string, function(x)
+    stringi::stri_replace(x, pattern, replacement, ...))
 }
