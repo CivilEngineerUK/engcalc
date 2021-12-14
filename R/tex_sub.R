@@ -22,8 +22,9 @@ KK <- matrix(c('12 * EI/L^3', '6 * EI/L^2', '-12 * EI/L^3', '6 * EI/L^2',
               '6 * EI/L^2', '4 * EI/L', '-6 * EI/L^2', '2 * EI/L',
               '-12 * EI/L^3', '-6 * EI/L^2', '12 * EI/L^3', '-6 * EI/L^2',
               '6 * EI/L^2', '2 * EI/L', '-6 * EI/L^2', '4 * EI/L'),
-            nrow = 4)
-KK <- ysym(KK)
+            nrow = 4) %>% 
+  ysym()
+
 
 # a structural engineering beam displacement vector
 # with typical notations for conversion to latex
@@ -41,18 +42,19 @@ sub_eq <- function(eq = 'K * d', val, vars = list(K = KK, d = dd), ...) {
   f <- eval(parse(text = eq))
   f_tex <- Ryacas::tex(f)
   val_names <- names(val)
+  val_names <- gsub(' ', '', val_names)
   new_names <- gsub('+[\\{_,. \\}]', 'abcdefg', val_names)
+  variable_names <- paste(objs, 'abcdef', sep = '')
   eq_unsolved <- eq
   for (i in 1:length(objs)) {
-    eq_unsolved <-
-      gsub(objs[i], Ryacas::tex(get(objs[i])), eq_unsolved, fixed = TRUE)
     obj <- get(objs[i])
-    for (k in 1:length(obj)) {
-      for (j in 1:length(val_names)) {
-        obj[k] <- gsub(val_names[j], new_names[j], obj[k], fixed = TRUE)
-      }
+    if (!is.null(obj$yacas_cmd))
+      obj <- obj$yacas_cmd
+    obj <- gsub(' _', '_', obj, fixed = TRUE)
+    for (j in 1:length(val_names)) {
+      obj <- gsub(val_names[j], new_names[j], obj, fixed = T)
     }
-    assign(objs[i], obj)
+    assign(variable_names[i], Ryacas::ysym(obj))
   }
   ff <- eval(parse(text = eq))
   ff_tex <- Ryacas::tex(ff)
