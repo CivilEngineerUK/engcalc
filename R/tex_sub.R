@@ -32,20 +32,18 @@ dd <- c('v_{1}', 'theta_{1}', 'v_{x, z}', 'theta_{x, z}') %>%
   ysym()
 
 val <- 3:8
-names(val) <- c(dd, 'EI', 'L')
+names(val) <- c('v_{1}', 'theta_{1}', 'v_{x, z}', 'theta_{x, z}', 'EI', 'L')
 
-sub_eq <- function(eq = 'K * d', val, vars = list(K = KK, d = dd), ...) {
+sub_eq <- function(x = 'f', eq = 'K * d', val, vars = list(K = KK, d = dd), ...) {
   if (!is.null(vars))
     list2env(vars, environment())
   list2env(list(...), environment())
-  objs <- setdiff(ls(), c('eq', 'vars', 'val'))
+  objs <- setdiff(ls(), names(formals()))
   f <- eval(parse(text = eq))
   f_tex <- Ryacas::tex(f)
   val_names <- names(val)
   val_names <- gsub(' ', '', val_names)
   new_names <- gsub('+[\\{_,. \\}]', 'abcdefg', val_names)
-  variable_names <- paste(objs, 'abcdef', sep = '')
-  eq_unsolved <- eq
   for (i in 1:length(objs)) {
     obj <- get(objs[i])
     if (!is.null(obj$yacas_cmd))
@@ -54,18 +52,25 @@ sub_eq <- function(eq = 'K * d', val, vars = list(K = KK, d = dd), ...) {
     for (j in 1:length(val_names)) {
       obj <- gsub(val_names[j], new_names[j], obj, fixed = T)
     }
-    assign(variable_names[i], Ryacas::ysym(obj))
+    assign(objs[i], Ryacas::ysym(obj))
   }
   ff <- eval(parse(text = eq))
   ff_tex <- Ryacas::tex(ff)
-  eq_unsolved <- gsub('*', '\\bullet', eq_unsolved, fixed = TRUE)
-
-  val_sym <- sapply(val_names, function(x) Ryacas::tex(Ryacas::ysym(x)))
-  for (i in 1:length(val)) {
-    f_tex <- gsub(val_sym[i], new_names[i], f_tex, fixed = T)
-    str <- paste(new_names[i], val[i], sep = ' = ')
-    f_tex <- eval(parse(text = paste0('tex_sub(f_tex, ', str, ')')))
-  }
-  return(f_tex)
+  for (i in 1:length(val_names)) {
+    ff_tex <- gsub(paste0('\\mathrm{ ', new_names[i], ' }'), new_names[i], ff_tex, fixed = TRUE)
+    ff_tex <- eval(parse(text = paste0('tex_sub(ff_tex, ', new_names[i], ' = ', val[i], ')')))
+    ff <- Ryacas::with_value(ff, new_names[i], val[i])
+  } 
+  
+  eq_unsolved <- gsub('*', '\\bullet', paste0(x, ' = ', eq), fixed = TRUE)
+  return(list(ff_tex, ff))
 }
 
+recursive_simplify <- function(x) {
+  y <- Ryacas::simplify(x)
+  if (nchar(x)[1] == nchar(y)[1]) {
+    return(x)
+  } else {
+    recursive_simplify(y)
+  }
+}
