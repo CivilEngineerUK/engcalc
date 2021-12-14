@@ -13,3 +13,4 @@ TODO:
 2. Develop a `LaTeX` calculation template for typesetting of calculations
 3. Develop HTML style for interactive calulations
 4. Integrate with `learnr` so that `engcalc` can be used for teaching
+5. Better integration and differentiation support

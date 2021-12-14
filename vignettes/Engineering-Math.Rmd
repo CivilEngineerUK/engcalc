@@ -1,5 +1,5 @@
 ---
-title: "Engineering Math in `engcalc`"
+title: "Engineering Equations using the `engcalc` Package"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Engineering-Math}
@@ -10,7 +10,8 @@ vignette: >
 ```{r, include = FALSE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  results = 'asis'
 )
 ```
 
@@ -20,11 +21,14 @@ library(Ryacas)
 library(magrittr)
 ```
 
-# Use of `engcalc`
 
-Engineers typically need to shown working for quality assurance and teaching purposes purposes. The `Ryacas` package implements the `YACAS` software in `R` and provides many useful symbolic operations such as integration, differentiation and matrix multiplication. The `engcalc` package uses `Ryacas` to derive outputs and provides the substituted working out to show the processes that are undertaken.
+Engineers typically need to shown working for quality assurance and teaching purposes purposes. The `Ryacas` package implements the `YACAS` software in `R` and provides many useful symbolic operations such as integration, differentiation and matrix multiplication. When using this package, the equation is simplified after each substitution using the `Ryacas::with_value` command and this means that it is difficult to show working when dealing with numerous variables.
+The `engcalc` package uses `Ryacas` to derive outputs and uses the `gsubfn` package to provide the substituted working out to show the processes that are undertaken.`engcalc` enables variable names which use subscripts such as $\theta_{(x,z)}$, $\sigma_{(1,2)}$ to be used in the `Ryacas` workflow.
 
-It is easy to show the working out process of arbirtary calculations using the `engcalc` package.
+Generally, all `Ryacas` features are available
+
+
+The following examples demonstrate some of the key features:
 
 ## Example 1
 
@@ -34,7 +38,7 @@ Here is a stress tensor $\sigma$ and some reference areas $A$ over which the str
 xyz <- c('x', 'y', 'z')
 sigma <-
   sapply(xyz, function(x)
-    paste('theta_{', xyz, ',', x, '}', sep = ''))
+    paste('sigma_{', xyz, ',', x, '}', sep = ''))
 
 A <- c('A_1', 'A_2', 'A_3')
 
@@ -64,6 +68,117 @@ And now we can solve for the forces that would result in these stresses over the
 results <- sub_eq('s * a', vals, s = ysym(sigma), a = ysym(A))
 
 y <- lapply(results, function(x) {x %>%
+  paste0('$$ F = ', ., '$$') %>%
+  cat()
+})
+```
+
+## Example 2 - Beam stiffness matrix multiplication
+
+We know that $F=K\bullet d$ so lets create a beam stiffness matrix $K$ and displacement vector $d$ and use these to calculate the force vector $F$:
+
+```{r, results = 'asis'}
+# a structural engineering beam stiffness matrix
+KK <- matrix(c('12 * EI/L^3', '6 * EI/L^2', '-12 * EI/L^3', '6 * EI/L^2',
+               '6 * EI/L^2', '4 * EI/L', '-6 * EI/L^2', '2 * EI/L',
+               '-12 * EI/L^3', '-6 * EI/L^2', '12 * EI/L^3', '-6 * EI/L^2',
+               '6 * EI/L^2', '2 * EI/L', '-6 * EI/L^2', '4 * EI/L'),
+             nrow = 4) %>% 
+  ysym()
+
+KK %>%
+  tex() %>%
+  paste0('$$K = ', ., '$$') %>%
+  cat()
+
+# a structural engineering beam displacement vector
+# with typical notations for conversion to latex
+dd <- c('v_{y,1}', 'theta_{z,1}', 'v_{y,2}', 'theta_{z,2}') %>%
+  ysym()
+
+dd %>%
+  tex() %>%
+  paste0('$$d = ', ., '$$') %>%
+  cat()
+```
+
+We want to solve this using know quantities which we will now specify:
+
+```{r}
+val <- 3:8
+names(val) <- c('v_{y,1}', 'theta_{z,1}', 'v_{y,2}', 'theta_{z,2}', 'EI', 'L')
+print(val)
+```
+
+First, we can just simplify the matrix using these values:
+
+```{r}
+results <- sub_eq('K', K = KK, val = val)
+y <- lapply(results, function(x) {
+  x %>%
+  paste0('$$ K = ', ., '$$') %>%
+  cat()
+})
+```
+
+We will subsititute these values into the equation $F = K\bullet d$ and show the working:
+
+```{r}
+results <-
+  sub_eq('K * d', d = dd, K = KK,
+  val = val
+)
+
+cat('$$F = K \\bullet d$$')
+
+KKK <- sub_eq('K', K = KK, val = val)
+ddd <- sub_eq('d', d = dd, val = val)
+cat(paste0('$$F = ', 
+           KKK[[1]], 
+           ' \\bullet ', 
+           ddd[[1]], '$$'))
+
+cat(paste0('$$F = ', 
+           KKK[[2]], 
+           ' \\bullet ', 
+           ddd[[2]], '$$'))
+
+y <- lapply(results, function(x) {
+  x %>%
+  paste0('$$ F = ', ., '$$') %>%
+  cat()
+})
+```
+
+We may only want to substitute some of the variables as there may still be some unknowns:
+
+```{r}
+# partial solution
+results <-
+  sub_eq('K * d', d = dd, K = KK,
+  val = val[5:6]
+)
+
+y <- lapply(results, function(x) {
+  x %>%
+  paste0('$$ F = ', ., '$$') %>%
+  cat()
+})
+```
+
+## Example 3 - Integration of a beam stiffness matrix
+
+It is possible to use any of the `Ryacas` functions and show the substituted expression.
+
+```{r}
+# A more complex case involving integration
+results <-
+  sub_eq('integrate(K, \"EI\") * d',
+  d = dd, K = KK, val = val[5:6]
+)
+
+y <- lapply(results, function(x) {
+  x %>%
   paste0('$$ F = ', ., '$$') %>%
   cat()
 })

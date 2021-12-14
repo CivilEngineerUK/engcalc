@@ -31,6 +31,9 @@ tex_sub <- function(x, ...) {
 #'   of the equation
 #' @param ... similar to `vars` but does not require the user to
 #'   input the variables in list form
+#' @param tex_final boolean for whether the final result should be 
+#'   transformed to LaTex using the `Ryacas::tex` command. Useful
+#'   for printing the results and working in `rmarkdown`
 #' @examples 
 #' library(Ryacas)
 #' library(magrittr)
@@ -58,7 +61,7 @@ sub_eq <-
   function(eq,
            val,
            vars = NULL,
-           ...) {
+           ..., tex_final = TRUE) {
     if (!is.null(vars))
       list2env(vars, environment())
     list2env(list(...), environment())
@@ -92,5 +95,5 @@ sub_eq <-
         )))
       ff <- Ryacas::with_value(ff, new_names[i], val[i])
     }
-    return(list(f_tex, ff_tex, ff))
+    return(list(f_tex, ff_tex, ifelse(tex_final, Ryacas::tex(ff), ff)))
   }

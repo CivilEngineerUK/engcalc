@@ -4,7 +4,7 @@
 \alias{sub_eq}
 \title{Substitute variables in equations}
 \usage{
-sub_eq(eq, val, vars = NULL, ...)
+sub_eq(eq, val, vars = NULL, ..., tex_final = TRUE)
 }
 \arguments{
 \item{eq}{the string representation of the equation to solve}
@@ -17,6 +17,10 @@ of the equation}
 
 \item{...}{similar to \code{vars} but does not require the user to
 input the variables in list form}
+
+\item{tex_final}{boolean for whether the final result should be
+transformed to LaTex using the \code{Ryacas::tex} command. Useful
+for printing the results and working in \code{rmarkdown}}
 }
 \value{
 a \code{list} including the following:
