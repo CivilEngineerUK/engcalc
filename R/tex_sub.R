@@ -12,9 +12,22 @@
 #' eq <- Ryacas::ysym(('(a * b) / c'))
 #' tex_sub(Ryacas::tex(eq), a = 4, b = 3, c = 2)
 #' @export
-tex_sub <- function(x, ..., .fixed = F) {
-  y <- gsubfn::gsubfn("(\\w+)", list(...), x)
-  gsub("(\\d) (\\d)", "\\1 \\\\bullet \\2", y, fixed = .fixed)
+tex_sub <- function(x, ...) {
+  vars <- list(...)
+  var_names <- names(vars)
+  new_names <- gsub('[[:punct:]]| ','', var_names)
+  names(vars) <- new_names
+  for (i in which(var_names != new_names)) {
+    x <- gsub(var_names[i], new_names[i], x, fixed = T)
+  }
+  y <- gsubfn::gsubfn("(\\w+)", vars, x)
+  z <- 'NULL'
+  while(y != z){
+    z <- y
+    y <- gsub('  ', ' ', y)
+  }
+  z <- gsub("(\\d) (\\d)", "\\1 \\\\bullet \\2", z)
+  gsub("(\\d) (\\d)", "\\1 \\\\bullet \\2", z)
 }
 
 #' Substitute variables in equations without simplifying
@@ -64,39 +77,14 @@ sub_eq <- function(eq, ..., vars = NULL) {
   eq_parts <- stringr::str_extract_all(eq, "[a-zA-Z]+")[[1]]
   values <- setdiff(objs, eq_parts)
   f1 <- sub_latex(eq, eq_parts)
-  f2 <- ifelse(length(values) == 0, f1, sub_latex(f1, values)) # problem here
+  f2 <- ifelse(length(values) == 0, f1, sub_latex(f1, values))
   f3 <- eval(parse(text = eq))
   f4 <- Ryacas::tex(f3)
-  val_names <- gsub(' ', '', objs)
-  new_names <- gsub('+[\\{_,. \\}]', 'abcdef', val_names)
-  for (i in 1:length(objs)) {
-    obj <- get(objs[i])
-    if (is.numeric(obj))
-      obj <- obj
-    else if (!is.null(obj$yacas_cmd))
-      obj <- obj$yacas_cmd
-    obj <- gsub(' _', '_', obj, fixed = TRUE)
-    for (j in 1:length(val_names)) {
-      obj <- gsub(val_names[j], new_names[j], obj, fixed = T)
-    }
-    assign(objs[i], Ryacas::ysym(obj))
-  }
-  ff <- eval(parse(text = eq))
-  ff_tex <- Ryacas::tex(ff)
-  # fff_tex <- f4
-  for (i in 1:length(val_names)) {
-    ff_tex <-
-      gsub(paste0('\\mathrm{ ', new_names[i], ' }'),
-           new_names[i],
-           ff_tex,
-           fixed = TRUE)
-    ff_tex <-
-      eval(parse(text = paste0(
-        'tex_sub(ff_tex, ', new_names[i], ' = ', val[i], ')'
-      )))
-    ff <- Ryacas::with_value(ff, new_names[i], val[i])
-  }
-  return(list(f1, f2, f3, f4, ff_tex, tex(ff), ff))
+  f5 <- sub_latex(f4, values)
+  f6 <- sub_latex(f3$yacas_cmd, values, FALSE)
+  f7 <- f3
+  f7$yacas_cmd <- f6
+  return(list(f1, f2, f3, f4, f5, f6, f7))
 }
 
 
@@ -150,11 +138,15 @@ sub_eq <- function(eq, ..., vars = NULL) {
 #' @return A tex string of the output
 #' @export
 sub_latex <- function(eq, objs, latex = TRUE, env = NULL) {
+  if (length(objs) == 0)
+    return(eq)
   if (is.null(env)) env <- parent.frame()
   fn_tex <- sapply(objs, function(x) sub_helper_fn(x, env, latex))
   if (latex)
     objs <- sapply(objs, function(x) 
       gsub(' _', '_', Ryacas::tex(Ryacas::ysym(x))))
+  else
+    eq <- gsub(' ', '', eq)
   txt <- paste0(paste('"', objs, '"= "', fn_tex, '"', sep = ''), collapse = ', ')
   txt <- paste0('tex_sub(eq, ', txt, ')')
   txt <- gsub('\\', '\\\\', txt, fixed = TRUE)
