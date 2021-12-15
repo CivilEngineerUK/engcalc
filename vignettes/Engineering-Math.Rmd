@@ -60,6 +60,7 @@ We now assign some values to the variables in the tensor and the areas:
 ```{r vals}
 vals <- 1:12
 names(vals) <- c(sigma, A)
+print(vals)
 ```
 
 And now we can solve for the forces that would result in these stresses over these areas:

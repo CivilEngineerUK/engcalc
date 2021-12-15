@@ -23,7 +23,7 @@ transformed to LaTex using the \code{Ryacas::tex} command. Useful
 for printing the results and working in \code{rmarkdown}}
 }
 \value{
-a \code{list} including the following:
+a \code{list} of the following:
 \enumerate{
 \item The equation after multiplication and before substitution
 \item The equation after multiplication and after substitution

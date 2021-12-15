@@ -1,6 +1,6 @@
 Package: engcalc
 Title: Engineering Calculations in `R`
-Version: 0.0.0.9000
+Version: 0.0.0.9001
 Authors@R: 
     person("Michael", "Rustell", , "michael.rustell@brunel.ac.uk", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-8364-0198"))
@@ -16,10 +16,10 @@ RoxygenNote: 7.1.2
 Suggests: 
     knitr,
     rmarkdown,
+    magrittr,
     testthat (>= 3.0.0)
 Imports:
     Ryacas,
-    gsubfn,
-    magrittr
+    gsubfn
 VignetteBuilder: knitr
 Config/testthat/edition: 3

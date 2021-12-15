@@ -17,7 +17,6 @@ tex_sub <- function(x, ...) {
   gsub("(\\d) (\\d)", "\\1 \\\\bullet \\2", y)
 }
 
-
 #' Substitute variables in equations
 #' 
 #' Allows the substitution but not solution of `Ryacas` equations
@@ -52,22 +51,19 @@ tex_sub <- function(x, ...) {
 #' # calculate the effective force 
 #' sub_eq('s * a', vals, s = ysym(sigma), a = ysym(areas))
 #' 
-#' @return a `list` including the following:
+#' @return a `list` of the following:
 #'   1. The equation after multiplication and before substitution
 #'   2. The equation after multiplication and after substitution
 #'   3. The final solution
 #' @export
-sub_eq <-
-  function(eq,
-           val,
-           vars = NULL,
-           ..., tex_final = TRUE) {
+sub_eq <- function(eq, val, vars = NULL, ..., tex_final = TRUE) {
     if (!is.null(vars))
       list2env(vars, environment())
     list2env(list(...), environment())
     objs <- setdiff(ls(), names(formals()))
     f <- eval(parse(text = eq))
     f_tex <- Ryacas::tex(f)
+    f_process <- sub_latex(eq, objs)
     val_names <- names(val)
     val_names <- gsub(' ', '', val_names)
     new_names <- gsub('+[\\{_,. \\}]', 'abcdefg', val_names)
@@ -95,5 +91,66 @@ sub_eq <-
         )))
       ff <- Ryacas::with_value(ff, new_names[i], val[i])
     }
-    return(list(f_tex, ff_tex, ifelse(tex_final, Ryacas::tex(ff), ff)))
+    return(list(f_process, f_tex, ff_tex, ifelse(tex_final, Ryacas::tex(ff), ff)))
   }
+
+
+#' Substitute irregular yacas expressions
+#' 
+#' Allows substitution of variables into `Ryacas` expressions without further operations
+#'   or simplification. The function allows operations on objects which are composed 
+#'   of irregular variable names such as `theta_{x,z}`.
+#'   
+#'   The function can output in latex form so that the working out of an equation can
+#'   be shown as well as the final solution.
+#' 
+#' @param eq a `string` of the expression to solve i.e. `'s * a'` where
+#'   both `s` and `a` are the names of `ysym` objects which are in the 
+#'   parent environment (`parent.frame()`) or in another enviroment 
+#'   as referenced using the `env` argument
+#' @param objs a `vector or `scalar`
+#' @param latex boolean for whether the output is rendered to latex using
+#'   the `Ryacas::tex()` function. If `FALSE` then a string of the operations 
+#' @param env the environment in which the`ysym` variables referenced in 
+#'   `eq` exist. This defaults to the `parent.frame()` of where `sub_latex`
+#'   is called.
+#'   
+#' @examples 
+#' library(Ryacas)
+#' library(magrittr)
+#' 
+#' # create some `Ryacas` variables
+#' sigma <-
+#' sapply(c('x', 'y', 'z'), function(x)
+#'  paste('sigma_{', c('x', 'y', 'z'), ',', x, '}', sep = '')) %>%
+#'  ysym()
+#'
+#' A <- c('A_1', 'A_2', 'A_3') %>%
+#' ysym()
+#' 
+#' # create a string of the equation for substitution
+#' eq <- 'sigma * A'
+#' 
+#' # create vector with variable names in
+#' objs <- c('sigma', 'A')
+#' 
+#' # call the function to get the latex output of this
+#' # unsolved equation
+#' sub_latex(eq, objs)
+#' 
+#' # output a string of the output which can be converted to a
+#' # `Ryacas` object
+#' sub_latex(eq, objs, latex = TRUE)
+#' 
+#' @return A tex string of the output
+#' @export
+sub_latex <- function(eq, objs, latex = TRUE, env = NULL) {
+  if (is.null(env)) env <- parent.frame()
+  if (latex) fn <- function(x) Ryacas::tex(get(x, envir = env))
+  else fn <- function(x) get(x, envir = env)$yacas_cmd
+  fn_tex <- sapply(objs, function(x) fn(x))
+  txt <- paste0(paste(objs, '= "', fn_tex, '"'), collapse = ', ')
+  txt <- paste0('tex_sub(eq, ', txt, ')')
+  txt <- gsub('\\', '\\\\', txt, fixed = TRUE)
+  eval(parse(text = txt))
+}
