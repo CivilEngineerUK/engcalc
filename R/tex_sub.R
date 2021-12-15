@@ -17,22 +17,21 @@ tex_sub <- function(x, ...) {
   gsub("(\\d) (\\d)", "\\1 \\\\bullet \\2", y)
 }
 
-#' Substitute variables in equations
+#' Substitute variables in equations without simplifying
 #' 
 #' Allows the substitution but not solution of `Ryacas` equations
 #'   also allowing special variable names as found in engineering 
-#'   mathematics such as `theta_{x, z}`
+#'   mathematics such as `theta_{x, z}` and `sigma_{(x, 1)}`.
 #' 
 #' @param eq the string representation of the equation to solve
-#' @param val a vector where each value has a corresponding name 
-#'   of a variable which appears in the equation to be solved
-#' @param vars a list which the user can use to input the parts 
-#'   of the equation
-#' @param ... similar to `vars` but does not require the user to
-#'   input the variables in list form
-#' @param tex_final boolean for whether the final result should be 
-#'   transformed to LaTex using the `Ryacas::tex` command. Useful
-#'   for printing the results and working in `rmarkdown`
+#' @param ... input of `ysym` objects and variables which feature 
+#'   in `eq` or in the variables that `eq` refers to.
+#'   Similar to `vars` but does not require the user to
+#'   input the variables as a `list`.
+#' @param vars an optional `list` which holds named `ysym` objects
+#'   and variables which feature in `eq` or in the variables that
+#'   `eq` refers to.
+#'   
 #' @examples 
 #' library(Ryacas)
 #' library(magrittr)
@@ -56,43 +55,49 @@ tex_sub <- function(x, ...) {
 #'   2. The equation after multiplication and after substitution
 #'   3. The final solution
 #' @export
-sub_eq <- function(eq, val, vars = NULL, ..., tex_final = TRUE) {
-    if (!is.null(vars))
-      list2env(vars, environment())
-    list2env(list(...), environment())
-    objs <- setdiff(ls(), names(formals()))
-    f <- eval(parse(text = eq))
-    f_tex <- Ryacas::tex(f)
-    f_process <- sub_latex(eq, objs)
-    val_names <- names(val)
-    val_names <- gsub(' ', '', val_names)
-    new_names <- gsub('+[\\{_,. \\}]', 'abcdefg', val_names)
-    for (i in 1:length(objs)) {
-      obj <- get(objs[i])
-      if (!is.null(obj$yacas_cmd))
-        obj <- obj$yacas_cmd
-      obj <- gsub(' _', '_', obj, fixed = TRUE)
-      for (j in 1:length(val_names)) {
-        obj <- gsub(val_names[j], new_names[j], obj, fixed = T)
-      }
-      assign(objs[i], Ryacas::ysym(obj))
+sub_eq <- function(eq, ..., vars = NULL) {
+  if (!is.null(vars))
+    list2env(vars, environment())
+  list2env(list(...), environment())
+  objs <- setdiff(ls(), names(formals()))
+  objs <- objs[rev(order(nchar(objs)))]
+  eq_parts <- stringr::str_extract_all(eq, "[a-zA-Z]+")[[1]]
+  values <- setdiff(objs, eq_parts)
+  f1 <- sub_latex(eq, eq_parts)
+  f2 <- ifelse(length(values) == 0, f1, sub_latex(f1, values))
+  f3 <- eval(parse(text = eq))
+  f4 <- Ryacas::tex(f3)
+  
+  ## code below not working after changes to code above
+  val_names <- names(val)
+  val_names <- gsub(' ', '', val_names)
+  new_names <- gsub('+[\\{_,. \\}]', 'abcdefg', val_names)
+  for (i in 1:length(objs)) {
+    obj <- get(objs[i])
+    if (!is.null(obj$yacas_cmd))
+      obj <- obj$yacas_cmd
+    obj <- gsub(' _', '_', obj, fixed = TRUE)
+    for (j in 1:length(val_names)) {
+      obj <- gsub(val_names[j], new_names[j], obj, fixed = T)
     }
-    ff <- eval(parse(text = eq))
-    ff_tex <- Ryacas::tex(ff)
-    for (i in 1:length(val_names)) {
-      ff_tex <-
-        gsub(paste0('\\mathrm{ ', new_names[i], ' }'),
-             new_names[i],
-             ff_tex,
-             fixed = TRUE)
-      ff_tex <-
-        eval(parse(text = paste0(
-          'tex_sub(ff_tex, ', new_names[i], ' = ', val[i], ')'
-        )))
-      ff <- Ryacas::with_value(ff, new_names[i], val[i])
-    }
-    return(list(f_process, f_tex, ff_tex, ifelse(tex_final, Ryacas::tex(ff), ff)))
+    assign(objs[i], Ryacas::ysym(obj))
   }
+  ff <- eval(parse(text = eq))
+  ff_tex <- Ryacas::tex(ff)
+  for (i in 1:length(val_names)) {
+    ff_tex <-
+      gsub(paste0('\\mathrm{ ', new_names[i], ' }'),
+           new_names[i],
+           ff_tex,
+           fixed = TRUE)
+    ff_tex <-
+      eval(parse(text = paste0(
+        'tex_sub(ff_tex, ', new_names[i], ' = ', val[i], ')'
+      )))
+    ff <- Ryacas::with_value(ff, new_names[i], val[i])
+  }
+  return(list(f3, f4, ff_tex, tex(ff), ff))
+}
 
 
 #' Substitute irregular yacas expressions
@@ -146,11 +151,29 @@ sub_eq <- function(eq, val, vars = NULL, ..., tex_final = TRUE) {
 #' @export
 sub_latex <- function(eq, objs, latex = TRUE, env = NULL) {
   if (is.null(env)) env <- parent.frame()
-  if (latex) fn <- function(x) Ryacas::tex(get(x, envir = env))
-  else fn <- function(x) get(x, envir = env)$yacas_cmd
-  fn_tex <- sapply(objs, function(x) fn(x))
-  txt <- paste0(paste(objs, '= "', fn_tex, '"'), collapse = ', ')
+  fn_tex <- sapply(objs, function(x) sub_helper_fn(x, env, latex))
+  if (latex)
+    objs <- sapply(objs, function(x) 
+      gsub(' _', '_', Ryacas::tex(Ryacas::ysym(x))))
+  txt <- paste0(paste('"', objs, '"= "', fn_tex, '"', sep = ''), collapse = ', ')
   txt <- paste0('tex_sub(eq, ', txt, ')')
   txt <- gsub('\\', '\\\\', txt, fixed = TRUE)
-  eval(parse(text = txt))
+  txt <- eval(parse(text = txt))
+  txt <- gsub(' _', '_', txt)
+  if (latex)
+    gsub('*', '', txt)
+  else
+    txt
+}
+
+sub_helper_fn <- function(x, env, latex) {
+  obj <- get(x, envir = env)
+  if (is.numeric(obj))
+    return(obj)
+  if (!any(class(obj) == 'yac_symbol')) 
+    obj <- Ryacas::ysym(obj)
+  if (latex)
+    Ryacas::tex(obj)
+  else
+    obj
 }

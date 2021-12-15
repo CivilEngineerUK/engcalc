@@ -2,25 +2,21 @@
 % Please edit documentation in R/tex_sub.R
 \name{sub_eq}
 \alias{sub_eq}
-\title{Substitute variables in equations}
+\title{Substitute variables in equations without simplifying}
 \usage{
-sub_eq(eq, val, vars = NULL, ..., tex_final = TRUE)
+sub_eq(eq, ..., vars = NULL)
 }
 \arguments{
 \item{eq}{the string representation of the equation to solve}
 
-\item{val}{a vector where each value has a corresponding name
-of a variable which appears in the equation to be solved}
+\item{...}{input of \code{ysym} objects and variables which feature
+in \code{eq} or in the variables that \code{eq} refers to.
+Similar to \code{vars} but does not require the user to
+input the variables as a \code{list}.}
 
-\item{vars}{a list which the user can use to input the parts
-of the equation}
-
-\item{...}{similar to \code{vars} but does not require the user to
-input the variables in list form}
-
-\item{tex_final}{boolean for whether the final result should be
-transformed to LaTex using the \code{Ryacas::tex} command. Useful
-for printing the results and working in \code{rmarkdown}}
+\item{vars}{an optional \code{list} which holds named \code{ysym} objects
+and variables which feature in \code{eq} or in the variables that
+\code{eq} refers to.}
 }
 \value{
 a \code{list} of the following:
@@ -33,7 +29,7 @@ a \code{list} of the following:
 \description{
 Allows the substitution but not solution of \code{Ryacas} equations
 also allowing special variable names as found in engineering
-mathematics such as \verb{theta_\{x, z\}}
+mathematics such as \verb{theta_\{x, z\}} and \verb{sigma_\{(x, 1)\}}.
 }
 \examples{
 library(Ryacas)
