@@ -12,9 +12,9 @@
 #' eq <- Ryacas::ysym(('(a * b) / c'))
 #' tex_sub(Ryacas::tex(eq), a = 4, b = 3, c = 2)
 #' @export
-tex_sub <- function(x, ...) {
+tex_sub <- function(x, ..., .fixed = F) {
   y <- gsubfn::gsubfn("(\\w+)", list(...), x)
-  gsub("(\\d) (\\d)", "\\1 \\\\bullet \\2", y)
+  gsub("(\\d) (\\d)", "\\1 \\\\bullet \\2", y, fixed = .fixed)
 }
 
 #' Substitute variables in equations without simplifying
@@ -64,17 +64,16 @@ sub_eq <- function(eq, ..., vars = NULL) {
   eq_parts <- stringr::str_extract_all(eq, "[a-zA-Z]+")[[1]]
   values <- setdiff(objs, eq_parts)
   f1 <- sub_latex(eq, eq_parts)
-  f2 <- ifelse(length(values) == 0, f1, sub_latex(f1, values))
+  f2 <- ifelse(length(values) == 0, f1, sub_latex(f1, values)) # problem here
   f3 <- eval(parse(text = eq))
   f4 <- Ryacas::tex(f3)
-  
-  ## code below not working after changes to code above
-  val_names <- names(val)
-  val_names <- gsub(' ', '', val_names)
-  new_names <- gsub('+[\\{_,. \\}]', 'abcdefg', val_names)
+  val_names <- gsub(' ', '', objs)
+  new_names <- gsub('+[\\{_,. \\}]', 'abcdef', val_names)
   for (i in 1:length(objs)) {
     obj <- get(objs[i])
-    if (!is.null(obj$yacas_cmd))
+    if (is.numeric(obj))
+      obj <- obj
+    else if (!is.null(obj$yacas_cmd))
       obj <- obj$yacas_cmd
     obj <- gsub(' _', '_', obj, fixed = TRUE)
     for (j in 1:length(val_names)) {
@@ -84,6 +83,7 @@ sub_eq <- function(eq, ..., vars = NULL) {
   }
   ff <- eval(parse(text = eq))
   ff_tex <- Ryacas::tex(ff)
+  # fff_tex <- f4
   for (i in 1:length(val_names)) {
     ff_tex <-
       gsub(paste0('\\mathrm{ ', new_names[i], ' }'),
@@ -96,7 +96,7 @@ sub_eq <- function(eq, ..., vars = NULL) {
       )))
     ff <- Ryacas::with_value(ff, new_names[i], val[i])
   }
-  return(list(f3, f4, ff_tex, tex(ff), ff))
+  return(list(f1, f2, f3, f4, ff_tex, tex(ff), ff))
 }
 
 
