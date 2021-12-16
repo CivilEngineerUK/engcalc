@@ -57,6 +57,6 @@ sub_latex(eq, objs)
 
 # output a string of the output which can be converted to a
 # `Ryacas` object
-sub_latex(eq, objs, latex = TRUE)
+# sub_latex(eq, objs, latex = TRUE)
 
 }

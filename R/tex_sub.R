@@ -69,22 +69,30 @@ tex_sub <- function(x, ...) {
 #'   3. The final solution
 #' @export
 sub_eq <- function(eq, ..., vars = NULL) {
+  var_names <- c(names(unlist(vars)), names(list(...)))
+  vn <- apply(sapply(var_names, function(x) x == YACAS_fn_names), 2, any)
+  if (any(vn))
+    return(message(
+      paste0('"', paste0(names(vn)[which(vn)], collapse = '", "'), 
+             '" are YACAS commands and are reserved for YACAS operations. 
+  For a list of all YACAS commands, type `engcalc::YACAS_fn_names()`')))
   if (!is.null(vars))
     list2env(vars, environment())
   list2env(list(...), environment())
-  objs <- setdiff(ls(), names(formals()))
+  objs <- setdiff(ls(), c('vn', 'var_names', names(formals())))
   objs <- objs[rev(order(nchar(objs)))]
   eq_parts <- stringr::str_extract_all(eq, "[a-zA-Z]+")[[1]]
+  eq_parts <- setdiff(eq_parts, YACAS_fn_names) # added
   values <- setdiff(objs, eq_parts)
   f1 <- sub_latex(eq, eq_parts)
   f2 <- ifelse(length(values) == 0, f1, sub_latex(f1, values))
   f3 <- eval(parse(text = eq))
   f4 <- Ryacas::tex(f3)
   f5 <- sub_latex(f4, values)
-  f6 <- sub_latex(f3$yacas_cmd, values, FALSE)
+  f6 <- sub_latex(f3$yacas_cmd, values, FALSE) # error here
   f7 <- f3
   f7$yacas_cmd <- f6
-  return(list(f1, f2, f3, f4, f5, f6, f7))
+  return(list(eq, f1, f2, f3, f4, f5, f6, f7))
 }
 
 
@@ -133,7 +141,7 @@ sub_eq <- function(eq, ..., vars = NULL) {
 #' 
 #' # output a string of the output which can be converted to a
 #' # `Ryacas` object
-#' sub_latex(eq, objs, latex = TRUE)
+#' # sub_latex(eq, objs, latex = TRUE)
 #' 
 #' @return A tex string of the output
 #' @export

@@ -66,7 +66,9 @@ print(vals)
 And now we can solve for the forces that would result in these stresses over these areas:
 
 ```{r result, results = 'asis'}
-results <- sub_eq('s * a', s = ysym(sigma), a = ysym(A))
+sigma <- ysym(sigma)
+A <- ysym(A)
+results <- sub_eq('s * a', s = sigma, a = A)
 
 y <- lapply(results, function(x) {x %>%
   paste0('$$ F = ', ., '$$') %>%
@@ -114,7 +116,7 @@ print(val)
 First, we can just simplify the matrix using these values:
 
 ```{r}
-results <- sub_eq('K', K = KK, var = val %>% as.list())
+results <- sub_eq('K', K = KK, vars = val %>% as.list())
 y <- lapply(results, function(x) {
   x %>%
   paste0('$$ K = ', ., '$$') %>%
@@ -127,7 +129,7 @@ We will subsititute these values into the equation $F = K\bullet d$ and show the
 ```{r}
 results <-
   sub_eq('K * d', d = dd, K = KK,
-  var = val %>% as.list()
+  vars = val %>% as.list()
 )
 
 cat('$$F = K \\bullet d$$')
@@ -174,7 +176,7 @@ It is possible to use any of the `Ryacas` functions and show the substituted exp
 ```{r}
 # A more complex case involving integration
 results <-
-  sub_eq('integrate(K, \"EI\") * d',
+  sub_eq('integrate(K, "EI") * d',
   d = dd, K = KK, vars = val[5:6] %>% as.list()
 )
 
