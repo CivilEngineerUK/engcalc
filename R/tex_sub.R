@@ -70,19 +70,24 @@ tex_sub <- function(x, ...) {
 #' @export
 sub_eq <- function(eq, ..., vars = NULL) {
   var_names <- c(names(unlist(vars)), names(list(...)))
-  vn <- apply(sapply(var_names, function(x) x == YACAS_fn_names), 2, any)
+  vn <- apply(sapply(var_names, function(x) x == YACAS_cmds), 2, any)
   if (any(vn))
     return(message(
       paste0('"', paste0(names(vn)[which(vn)], collapse = '", "'), 
-             '" are YACAS commands and are reserved for YACAS operations. 
-  For a list of all YACAS commands, type `engcalc::YACAS_fn_names()`')))
+             '"',ifelse(length(which(vn)) > 1, 
+  'are YACAS commands', 'is a YACAS command') , ' reserved for YACAS operations. 
+  For a list of all YACAS commands, type `engcalc::YACAS_cmds()`')))
   if (!is.null(vars))
     list2env(vars, environment())
   list2env(list(...), environment())
   objs <- setdiff(ls(), c('vn', 'var_names', names(formals())))
   objs <- objs[rev(order(nchar(objs)))]
-  eq_parts <- stringr::str_extract_all(eq, "[a-zA-Z]+")[[1]]
-  eq_parts <- setdiff(eq_parts, YACAS_fn_names) # added
+  #eq_parts <- gsub("\\s*D\\([^\\)]+\\)", "", eq) 
+  eq_parts <- eq
+  for (i in 1:length(Ryacas_fns))
+    eq_parts <- gsub(Ryacas_fns[i], '', eq_parts)
+  eq_parts <- stringr::str_extract_all(eq_parts, "[a-zA-Z]+")[[1]]
+  
   values <- setdiff(objs, eq_parts)
   f1 <- sub_latex(eq, eq_parts)
   f2 <- ifelse(length(values) == 0, f1, sub_latex(f1, values))
@@ -164,16 +169,4 @@ sub_latex <- function(eq, objs, latex = TRUE, env = NULL) {
     gsub('*', '', txt)
   else
     txt
-}
-
-sub_helper_fn <- function(x, env, latex) {
-  obj <- get(x, envir = env)
-  if (is.numeric(obj))
-    return(obj)
-  if (!any(class(obj) == 'yac_symbol')) 
-    obj <- Ryacas::ysym(obj)
-  if (latex)
-    Ryacas::tex(obj)
-  else
-    obj
 }

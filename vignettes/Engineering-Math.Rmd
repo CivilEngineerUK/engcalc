@@ -113,6 +113,7 @@ names(val) <- c('v_{y,1}', 'theta_{z,1}', 'v_{y,2}', 'theta_{z,2}', 'EI', 'L')
 print(val)
 ```
 
+
 First, we can just simplify the matrix using these values:
 
 ```{r}
