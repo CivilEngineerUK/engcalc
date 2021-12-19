@@ -18,7 +18,7 @@ parentheses <- function(x, term = 'integrate') {
 
   # find indices of term
   pos <- stringr::str_locate_all(x, term)
-  if (length(pos) == 0)
+  if (length(pos[[1]]) == 0)
     return(x)
   
   xx <- x
@@ -30,7 +30,7 @@ parentheses <- function(x, term = 'integrate') {
   new_txt <- list()
   for (i in 1:length(res)) {
     txt <- paste0(term, paste0(str_chars[res[[i]][1]:res[[i]][2]], collapse = ''))
-    ex <- eval(parse(text = paste0('rlang::expr(', txt, ')', collapse = '')))
+    ex <- eval(parse(text = paste0('rlang::expr(', txt, ')')))
     if (length(ex) == 5)
       new_txt[[i]] <- paste0('\\int_', as.character(ex[4]), '^', as.character(ex[5]), 
                         '\\left(', as.character(ex[2]), '\\right) d', as.character(ex[3]))
@@ -42,7 +42,7 @@ parentheses <- function(x, term = 'integrate') {
   
   # replace items
   for (i in length(new_txt):1) {
-    str_sub(xx, pos[[1]][i, 1], res[[i]][2]) <- new_txt[[i]]
+    stringr::str_sub(xx, pos[[1]][i, 1], res[[i]][2]) <- new_txt[[i]]
   }
   
   return(xx)

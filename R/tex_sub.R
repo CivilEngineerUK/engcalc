@@ -98,15 +98,18 @@ sub_eq <- function(eq, ..., vars = NULL) {
   eq_parts <- stringr::str_extract_all(eq_parts, "[a-zA-Z]+")[[1]]
   
   values <- setdiff(objs, eq_parts)
-  f1 <- sub_latex(eq, eq_parts)
+  eqq <- parentheses(eq)
+  f1 <- sub_latex(eqq, eq_parts)
   f2 <- ifelse(length(values) == 0, f1, sub_latex(f1, values))
+  #f1 <- parentheses(f1)
+  #f2 <- parentheses(f2)
   f3 <- eval(parse(text = eq))
   f4 <- Ryacas::tex(f3)
   f5 <- sub_latex(f4, values)
   f6 <- sub_latex(f3$yacas_cmd, values, FALSE) # error here
   f7 <- f3
   f7$yacas_cmd <- f6
-  return(list(eq, f1, f2, f3, f4, f5, f6, Ryacas::tex(Ryacas::simplify(f7))))
+  return(list(eqq, f1, f2, f3, f4, f5, f6, Ryacas::tex(Ryacas::simplify(f7))))
 }
 
 
