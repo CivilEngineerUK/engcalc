@@ -69,12 +69,20 @@ tex_sub <- function(x, ...) {
 #'   3. The final solution
 #' @export
 sub_eq <- function(eq, ..., vars = NULL) {
+  
+  #catch `eq` and do something if includes any `Ryacas` function calls
+  # Ryacas_check <- sapply(Ryacas_fns,function(x) grepl(x, eq))
+  # if (any(Ryacas_check)) {
+  #   # send to function to extract eq and evaluate 
+  #   parentheses
+  # }
+  
   var_names <- c(names(unlist(vars)), names(list(...)))
   vn <- apply(sapply(var_names, function(x) x == YACAS_cmds), 2, any)
   if (any(vn))
     return(message(
       paste0('"', paste0(names(vn)[which(vn)], collapse = '", "'), 
-             '"',ifelse(length(which(vn)) > 1, 
+             '"', ifelse(length(which(vn)) > 1, 
   'are YACAS commands', 'is a YACAS command') , ' reserved for YACAS operations. 
   For a list of all YACAS commands, type `engcalc::YACAS_cmds()`')))
   if (!is.null(vars))
@@ -83,6 +91,7 @@ sub_eq <- function(eq, ..., vars = NULL) {
   objs <- setdiff(ls(), c('vn', 'var_names', names(formals())))
   objs <- objs[rev(order(nchar(objs)))]
   #eq_parts <- gsub("\\s*D\\([^\\)]+\\)", "", eq) 
+  #stringr::str_extract(c(eq, eq), "(?<=\\().*(?=\\))")
   eq_parts <- eq
   for (i in 1:length(Ryacas_fns))
     eq_parts <- gsub(Ryacas_fns[i], '', eq_parts)
@@ -97,7 +106,7 @@ sub_eq <- function(eq, ..., vars = NULL) {
   f6 <- sub_latex(f3$yacas_cmd, values, FALSE) # error here
   f7 <- f3
   f7$yacas_cmd <- f6
-  return(list(eq, f1, f2, f3, f4, f5, f6, f7))
+  return(list(eq, f1, f2, f3, f4, f5, f6, Ryacas::tex(Ryacas::simplify(f7))))
 }
 
 
