@@ -1,3 +1,56 @@
+#' Substitute variables in equations without simplifying
+#' 
+#' Allows the substitution but not solution of `Ryacas` equations
+#'   also allowing special variable names as found in engineering 
+#'   mathematics such as `theta_{x, z}` and `sigma_{(x, 1)}`.
+#' 
+#' @param eq the string representation of the equation to solve
+#' @param ... input of `ysym` objects and variables which feature 
+#'   in `eq` or in the variables that `eq` refers to.
+#'   Similar to `vars` but does not require the user to
+#'   input the variables as a `list`.
+#' @param vars an optional `list` which holds named `ysym` objects
+#'   and variables which feature in `eq` or in the variables that
+#'   `eq` refers to.
+#' 
+#' @return a `list` of the following:
+#'   1. The equation after multiplication and before substitution
+#'   2. The equation after multiplication and after substitution
+#'   3. The final solution
+#' @export
+sub_eq <- function(eq, ..., vars = NULL) {
+  var_names <- c(names(unlist(vars)), names(list(...)))
+  vn <- apply(sapply(var_names, function(x) x == YACAS_cmds), 2, any)
+  if (any(vn))
+    return(message(
+      paste0('"', paste0(names(vn)[which(vn)], collapse = '", "'), 
+             '"', ifelse(length(which(vn)) > 1, 
+  'are YACAS commands', 'is a YACAS command') , ' reserved for YACAS operations. 
+  For a list of all YACAS commands, type `engcalc::YACAS_cmds()`')))
+  if (!is.null(vars))
+    list2env(vars, environment())
+  list2env(list(...), environment())
+  objs <- setdiff(ls(), c('vn', 'var_names', names(formals())))
+  objs <- objs[rev(order(nchar(objs)))]
+  eq_parts <- eq
+  for (i in 1:length(Ryacas_fns))
+    eq_parts <- gsub(Ryacas_fns[i], '', eq_parts)
+  eq_parts <- stringr::str_extract_all(eq_parts, "[a-zA-Z]+")[[1]]
+  
+  values <- setdiff(objs, eq_parts)
+  eqq <- parentheses(eq)
+  f1 <- sub_latex(eqq, eq_parts)
+  f2 <- ifelse(length(values) == 0, f1, sub_latex(f1, values))
+  f3 <- eval(parse(text = eq))
+  f4 <- Ryacas::tex(f3)
+  f5 <- sub_latex(f4, values)
+  f6 <- sub_latex(f3$yacas_cmd, values, FALSE) # error here
+  f7 <- f3
+  f7$yacas_cmd <- f6
+  f7 <- Ryacas::tex(Ryacas::simplify(f7))
+  return(list(eqq, f1, f2, f3, f4, f5, f6, f7))
+}
+
 #' Substitute variables in equation but don't solve
 #'
 #' Given an equation in `TeX` form as produced by the `package:Ryacas` package,
@@ -7,6 +60,7 @@
 #'   `package:Ryacas` package
 #' @param ... the names and values of variables for substitution i.e. `a = 4` will
 #'   search the string for `a` and substitute it for `4` but not simplify the output
+#'   
 #' @examples
 #' # Example 1
 #' eq <- Ryacas::ysym(('(a * b) / c'))
@@ -29,89 +83,6 @@ tex_sub <- function(x, ...) {
   z <- gsub("(\\d) (\\d)", "\\1 \\\\bullet \\2", z)
   gsub("(\\d) (\\d)", "\\1 \\\\bullet \\2", z)
 }
-
-#' Substitute variables in equations without simplifying
-#' 
-#' Allows the substitution but not solution of `Ryacas` equations
-#'   also allowing special variable names as found in engineering 
-#'   mathematics such as `theta_{x, z}` and `sigma_{(x, 1)}`.
-#' 
-#' @param eq the string representation of the equation to solve
-#' @param ... input of `ysym` objects and variables which feature 
-#'   in `eq` or in the variables that `eq` refers to.
-#'   Similar to `vars` but does not require the user to
-#'   input the variables as a `list`.
-#' @param vars an optional `list` which holds named `ysym` objects
-#'   and variables which feature in `eq` or in the variables that
-#'   `eq` refers to.
-#'   
-#' @examples 
-#' library(Ryacas)
-#' library(magrittr)
-#' 
-#' xyz <- c('x', 'y', 'z')
-#'
-#' # stress tensor
-#' sigma <-
-#'   sapply(xyz, function(x)
-#'     paste('theta_{', xyz, ',', x, '}', sep = ''))
-#' areas <- c('A_1', 'A_2', 'A_3')
-#' 
-#' vals <- 1:12
-#' names(vals) <- c(sigma, areas)
-#' 
-#' # calculate the effective force 
-#' sub_eq('s * a', vals, s = ysym(sigma), a = ysym(areas))
-#' 
-#' @return a `list` of the following:
-#'   1. The equation after multiplication and before substitution
-#'   2. The equation after multiplication and after substitution
-#'   3. The final solution
-#' @export
-sub_eq <- function(eq, ..., vars = NULL) {
-  
-  #catch `eq` and do something if includes any `Ryacas` function calls
-  # Ryacas_check <- sapply(Ryacas_fns,function(x) grepl(x, eq))
-  # if (any(Ryacas_check)) {
-  #   # send to function to extract eq and evaluate 
-  #   parentheses
-  # }
-  
-  var_names <- c(names(unlist(vars)), names(list(...)))
-  vn <- apply(sapply(var_names, function(x) x == YACAS_cmds), 2, any)
-  if (any(vn))
-    return(message(
-      paste0('"', paste0(names(vn)[which(vn)], collapse = '", "'), 
-             '"', ifelse(length(which(vn)) > 1, 
-  'are YACAS commands', 'is a YACAS command') , ' reserved for YACAS operations. 
-  For a list of all YACAS commands, type `engcalc::YACAS_cmds()`')))
-  if (!is.null(vars))
-    list2env(vars, environment())
-  list2env(list(...), environment())
-  objs <- setdiff(ls(), c('vn', 'var_names', names(formals())))
-  objs <- objs[rev(order(nchar(objs)))]
-  #eq_parts <- gsub("\\s*D\\([^\\)]+\\)", "", eq) 
-  #stringr::str_extract(c(eq, eq), "(?<=\\().*(?=\\))")
-  eq_parts <- eq
-  for (i in 1:length(Ryacas_fns))
-    eq_parts <- gsub(Ryacas_fns[i], '', eq_parts)
-  eq_parts <- stringr::str_extract_all(eq_parts, "[a-zA-Z]+")[[1]]
-  
-  values <- setdiff(objs, eq_parts)
-  eqq <- parentheses(eq)
-  f1 <- sub_latex(eqq, eq_parts)
-  f2 <- ifelse(length(values) == 0, f1, sub_latex(f1, values))
-  #f1 <- parentheses(f1)
-  #f2 <- parentheses(f2)
-  f3 <- eval(parse(text = eq))
-  f4 <- Ryacas::tex(f3)
-  f5 <- sub_latex(f4, values)
-  f6 <- sub_latex(f3$yacas_cmd, values, FALSE) # error here
-  f7 <- f3
-  f7$yacas_cmd <- f6
-  return(list(eqq, f1, f2, f3, f4, f5, f6, Ryacas::tex(Ryacas::simplify(f7))))
-}
-
 
 #' Substitute irregular yacas expressions
 #' 
@@ -172,7 +143,8 @@ sub_latex <- function(eq, objs, latex = TRUE, env = NULL) {
       gsub(' _', '_', Ryacas::tex(Ryacas::ysym(x))))
   else
     eq <- gsub(' ', '', eq)
-  txt <- paste0(paste('"', objs, '"= "', fn_tex, '"', sep = ''), collapse = ', ')
+  txt <- paste0(paste('"', objs, '"= "', fn_tex, '"', sep = ''), 
+                collapse = ', ')
   txt <- paste0('tex_sub(eq, ', txt, ')')
   txt <- gsub('\\', '\\\\', txt, fixed = TRUE)
   txt <- eval(parse(text = txt))
@@ -181,4 +153,16 @@ sub_latex <- function(eq, objs, latex = TRUE, env = NULL) {
     gsub('*', '', txt)
   else
     txt
+}
+
+sub_helper_fn <- function(x, env, latex) {
+  obj <- get(x, envir = env)
+  if (is.numeric(obj))
+    return(obj)
+  if (!any(class(obj) == 'yac_symbol')) 
+    obj <- Ryacas::ysym(obj)
+  if (latex)
+    Ryacas::tex(obj)
+  else
+    obj
 }

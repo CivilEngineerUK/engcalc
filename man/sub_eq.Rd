@@ -31,22 +31,3 @@ Allows the substitution but not solution of \code{Ryacas} equations
 also allowing special variable names as found in engineering
 mathematics such as \verb{theta_\{x, z\}} and \verb{sigma_\{(x, 1)\}}.
 }
-\examples{
-library(Ryacas)
-library(magrittr)
-
-xyz <- c('x', 'y', 'z')
-
-# stress tensor
-sigma <-
-  sapply(xyz, function(x)
-    paste('theta_{', xyz, ',', x, '}', sep = ''))
-areas <- c('A_1', 'A_2', 'A_3')
-
-vals <- 1:12
-names(vals) <- c(sigma, areas)
-
-# calculate the effective force 
-sub_eq('s * a', vals, s = ysym(sigma), a = ysym(areas))
-
-}

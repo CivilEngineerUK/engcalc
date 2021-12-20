@@ -2,12 +2,12 @@
 % Please edit documentation in R/helper_fns.R
 \name{parentheses}
 \alias{parentheses}
-\title{Function to find parenthesis pairs to catch \code{Ryacas} commands such as
-\code{integrate}, \code{t},\code{deriv.yac_symbol}  which still exist in the \code{tex}
-output so that they can aslo be tralslated into \code{tex} for pretty
-printing in \code{rmarkdown}}
+\title{Translates \code{integrate}, \code{deriv} and \code{t} into \code{tex} equivalent}
 \usage{
-parentheses(x, term = "integrate")
+parentheses(x)
+}
+\arguments{
+\item{x}{a string}
 }
 \description{
 Function to find parenthesis pairs to catch \code{Ryacas} commands such as
