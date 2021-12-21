@@ -36,7 +36,6 @@ sub_eq <- function(eq, ..., vars = NULL) {
   for (i in 1:length(Ryacas_fns))
     eq_parts <- gsub(Ryacas_fns[i], '', eq_parts)
   eq_parts <- stringr::str_extract_all(eq_parts, "[a-zA-Z]+")[[1]]
-  
   values <- setdiff(objs, eq_parts)
   eqq <- parentheses(eq)
   f1 <- sub_latex(eqq, eq_parts)
@@ -48,7 +47,7 @@ sub_eq <- function(eq, ..., vars = NULL) {
   f7 <- f3
   f7$yacas_cmd <- f6
   f7 <- Ryacas::tex(Ryacas::simplify(f7))
-  return(list(eqq, f1, f2, f3, f4, f5, f6, f7))
+  return(list(Ryacas::tex(Ryacas::ysym(eqq)), f1, f4, f5, f7))
 }
 
 #' Substitute variables in equation but don't solve

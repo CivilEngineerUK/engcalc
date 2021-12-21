@@ -7,7 +7,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE, message=FALSE, warning=FALSE}
+```{r, include = FALSE, message=FALSE, warning=FALSE, error=FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
@@ -15,67 +15,123 @@ knitr::opts_chunk$set(
 )
 ```
 
+Symbolic mathematics are excellent for both showing working such as in engineering as well as when teaching. `engcalc` uses the `Ryacas` package to implement the `YACAS` software in `R` for symbolic mathematics, and adds the functionality of being able to show the substitution of values for variables without simplification for equations involving integration, differentiation and matrix operations.
+
+It does this by catching the unevaluated arguments as strings and then performs substitutions on the strings at various stages of the calculation so that the substituted, but not solved equations can be seen. `engcalc` also enables variable names that involve subscript, which are common in engineering practice such as $\theta_{(x,z)}$, $\sigma_{(1,2)}$ to be used in the `Ryacas` workflow.
+
+Whilst `engcalc` does not interfere with the `Ryacas` commands, it has been optimised to work with integrals, derivatives and simple matrix operations i.e. those found in typical engineering practice.
+
+First, lets load some packages:
+
 ```{r setup}
 library(engcalc)
 library(Ryacas)
 library(magrittr)
 ```
 
-$$\int \left(K\right) dxx * \int_a^b\left(Kx\right) dxxx$$
-
-Engineers typically need to shown working for quality assurance and teaching purposes purposes. The `Ryacas` package implements the `YACAS` software in `R` and provides many useful symbolic operations such as integration, differentiation and matrix multiplication. When using this package, the equation is simplified after each substitution using the `Ryacas::with_value` command and this means that it is difficult to show working when dealing with numerous variables.
-The `engcalc` package uses `Ryacas` to derive outputs and uses the `gsubfn` package to provide the substituted working out to show the processes that are undertaken.`engcalc` enables variable names which use subscripts such as $\theta_{(x,z)}$, $\sigma_{(1,2)}$ to be used in the `Ryacas` workflow.
-
-Generally, all `Ryacas` features are available
-
-
 The following examples demonstrate some of the key features:
 
 ## Example 1
 
-Here is a stress tensor $\sigma$ and some reference areas $A$ over which the stresses are applied:
+Here is a stress tensor $\sigma$, which includes components with names in the form of: $\sigma_{x,y}$, written `\sigma_{x, y}`, which is conducive to Latex typesetting, but not practical for `R` variable names
 
-```{r,  results  = 'asis'}
+```{r}
 xyz <- c('x', 'y', 'z')
-sigma <-
+s <-
   sapply(xyz, function(x)
     paste('sigma_{', xyz, ',', x, '}', sep = ''))
+```
 
-A <- c('A_1', 'A_2', 'A_3')
+We can render this as Latex using the `tex` command from `Ryacas`:
 
-sigma %>%
+```{r}
+s %>%
   ysym() %>%
   tex() %>%
   paste0('$$ \\sigma = ', ., '$$') %>%
   cat()
+```
 
-A %>%
+Next, we will create an elasticity moduli vector $E$ which dictates the relationsship between $\sigma$ andthe strain $\varepsilon$:
+
+```{r}
+E <- paste('E_{', xyz, '}', sep = '') 
+E %>%
   ysym() %>%
-  paste0('$$ A = ', ., '$$') %>%
+  tex() %>%
+  paste0('$$ E = ', ., '$$') %>%
   cat()
 ```
 
-We now assign some values to the variables in the tensor and the areas:
+And now we will use the `sub_eq` function from `engcalc` to solve for the strains $\varepsilon$ Youngs Moduli $E$ that dictates the replationship between the stress and strain: $\varepsilon = \frac{\sigma}{E}$.
 
+### The `sub_eq` Function
 
-```{r vals}
-vals <- 1:12
-names(vals) <- c(sigma, A)
-print(vals)
-```
+The `sub_eq` function takes the following inputs:
 
-And now we can solve for the forces that would result in these stresses over these areas:
+1. `eq` the string representation of the equation to solve. In this case: $\sigma / E$.
+1. `...` input of `Ryacas::ysym` variables which feature in `eq` or in the variables that `eq` refers to. In this case `eq` references `sigma` and `E`, so we will input `sigma = s` and `E = E`. Note that the names do not have to be the same.
+1. `vars` an optional list which holds named `ysym` objects and variables which feature in `eq` or in the variables that `eq` refers to. In this case we could create a list i.e.: `vars = list(sigma = s, E = E)`, which is identical to inputting these as named arguments into `...`. 
 
-```{r result, results = 'asis'}
-sigma <- ysym(sigma)
-A <- ysym(A)
-results <- sub_eq('s * a', s = sigma, a = A)
+We will tackle this problem using both `...` adn `vars` to input the arguments:
 
-y <- lapply(results, function(x) {x %>%
-  paste0('$$ F = ', ., '$$') %>%
+### `sub_eq` Method 1: Using `...`
+
+```{r, results = 'asis'}
+# first transform the string matrices to symbolic
+sigma <- ysym(s)
+E <- ysym(E)
+
+varepsilon_1 <- sub_eq('sigma / E', sigma = s, E = E)
+
+y <- lapply(varepsilon_1[1:3], function(x) {x %>%
+  paste0('$$ \\varepsilon_1 = ', ., '$$') %>%
   cat()
 })
 ```
+
+### `sub_eq` Method 2: Using `vars`
+
+```{r, results = 'asis'}
+varepsilon_2 <- sub_eq('sigma / E', vars = list(sigma = s, E = E))
+
+y <- lapply(varepsilon_2[1:3], function(x) {x %>%
+  paste0('$$ \\varepsilon_2 = ', ., '$$') %>%
+  cat()
+})
+```
+
+Note how the results are identical:
+
+```{r}
+identical(varepsilon_1, varepsilon_2)
+```
+
+### `sub_eq` Method 3: Using `vars` and `...`
+
+It is possible to use both `vars` and `...` to pass variables to `sub_eq`. The results so far have been symbolic representations of $\varepsilon$, so we will now assign some values to each of the 12 variables (9 in $\sigma$ and 3 in $\varepsilon$) to show some simple substitution usign both `vars` and `...`^[values of `1:12` are used for ease of seeing the substitutions]:
+
+First, create some values for the variables in $\sigma$ and $E$:
+
+```{r vals}
+vals <- 1:12
+names(vals) <- c(s, paste('E_{', xyz, '}', sep = '') )
+knitr::kable(data.frame(Variable = paste('$\\', names(vals), '$'), Value = vals))
+vals <- as.list(vals)
+```
+
+Now we will substitute these values into the equation and solve, showing the steps:
+
+```{r, results = 'asis'}
+# first transform the string matrices to symbolic
+varepsilon_3 <- sub_eq('sigma / E', sigma = s, E = E, vars = vals)
+
+y <- lapply(varepsilon_3, function(x) {x %>%
+  paste0('$$ \\varepsilon_3 = ', ., '$$') %>%
+  cat()
+})
+```
+
 
 ## Example 2 - Beam stiffness matrix multiplication
 
@@ -189,14 +245,16 @@ It is possible to use any of the `Ryacas` functions and show the substituted exp
 
 ```{r}
 # A more complex case involving integration
-results <-
-  sub_eq('integrate(K, "xx", 1, 3)',
-   K = KK, xx = 'xx', vars = val %>% as.list()
-)
-
-y <- lapply(results, function(x) {
-  x %>%
-  paste0('$$ F = ', ., '$$') %>%
-  cat()
-})
+# results <-
+#   sub_eq('integrate(K, "xx", 1, 3)',
+#    K = KK, xx = 'xx', vars = val %>% as.list()
+# )
+# 
+# y <- lapply(results, function(x) {
+#   x %>%
+#   paste0('$$ F = ', ., '$$') %>%
+#   cat()
+# })
 ```
+
+$$\left( \begin{array}{c} \sigma _\left( x, x\right)  E_\left( x\right)  + \sigma _\left( x, y\right)  E_\left( y\right)  + \sigma _\left( x, z\right)  E_\left( z\right)  \\ \sigma _\left( y, x\right)  E_\left( x\right)  + \sigma _\left( y, y\right)  E_\left( y\right)  + \sigma _\left( y, z\right)  E_\left( z\right)  \\ \sigma _\left( z, x\right)  E_\left( x\right)  + \sigma _\left( z, y\right)  E_\left( y\right)  + \sigma _\left( z, z\right)  E_\left( z\right)  \end{array} \right)$$
