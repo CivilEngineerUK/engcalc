@@ -38,6 +38,10 @@ sub_eq <- function(eq, ..., vars = NULL) {
   eq_parts <- stringr::str_extract_all(eq_parts, "[a-zA-Z]+")[[1]]
   values <- setdiff(objs, eq_parts)
   eqq <- parentheses(eq)
+  if (eqq == eq)
+    f0 <- Ryacas::tex(Ryacas::ysym(eqq))
+  else
+    f0 <- eqq
   f1 <- sub_latex(eqq, eq_parts)
   f2 <- ifelse(length(values) == 0, f1, sub_latex(f1, values))
   f3 <- eval(parse(text = eq))
@@ -47,7 +51,7 @@ sub_eq <- function(eq, ..., vars = NULL) {
   f7 <- f3
   f7$yacas_cmd <- f6
   f7 <- Ryacas::tex(Ryacas::simplify(f7))
-  return(list(Ryacas::tex(Ryacas::ysym(eqq)), f1, f4, f5, f7))
+  return(list(f0, f1, f4, f5, f7))
 }
 
 #' Substitute variables in equation but don't solve
@@ -137,10 +141,11 @@ sub_latex <- function(eq, objs, latex = TRUE, env = NULL) {
     return(eq)
   if (is.null(env)) env <- parent.frame()
   fn_tex <- sapply(objs, function(x) sub_helper_fn(x, env, latex))
-  if (latex)
+  if (latex) {
     objs <- sapply(objs, function(x) 
       gsub(' _', '_', Ryacas::tex(Ryacas::ysym(x))))
-  else
+    eq <- gsub(' _', '_', eq)
+  } else
     eq <- gsub(' ', '', eq)
   txt <- paste0(paste('"', objs, '"= "', fn_tex, '"', sep = ''), 
                 collapse = ', ')
