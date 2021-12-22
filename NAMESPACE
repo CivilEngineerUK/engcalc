@@ -2,9 +2,8 @@
 
 export(impute_matrix)
 export(parentheses)
+export(simplify_ryacas)
 export(simplify_trig)
-export(string_fraction)
-export(string_round)
 export(sub_eq)
 export(sub_latex)
 export(tex_sub)

@@ -89,59 +89,106 @@ bracket_count <- function(x, index, start = '(', end = ')') {
 #' @return a ysym object
 #' @export
 simplify_trig <- function(x, type = 'fraction', ...) {
-  ysym(apply(as_r(x$yacas_cmd), c(1, 2), 
-     function(y) { 
-       if (type == 'round')
-         string_round(as.character(eval(parse(text = y))), ...)
-       else if(type == 'fraction')
-         string_fraction(as.character(eval(parse(text = y))), ...)
-       else
-         as.character(eval(parse(text = y)))
-       }))
+  # z <- as_r(x$yacas_cmd)
+  # if (type == 'fraction') 
+  #   fn <- string_fraction
+  # if else (type == 'round')
+  #   fn <- string_round
+  # else
+  #   return(x)
+  # for (i in 1:nrow(x)) {
+  #   for (j in 1:nrow(x)) {
+  #     
+  #   }
+  # }
+  # ysym(apply(as_r(x$yacas_cmd), c(1, 2), 
+  #    function(y) { 
+  #      if (type == 'round')
+  #        string_round(as.character(eval(parse(text = y))), ...)
+  #      else if(type == 'fraction')
+  #        string_fraction(as.character(eval(parse(text = y))), ...)
+  #      else
+  #        as.character(eval(parse(text = y)))
+  #      }))
 }
 
-#' Round numbers in a string
+#' Simplify `Ryacas` expression involving trigonometric operators
 #' 
-#' Vectorised function that takes a string (or vector of) and rounds any numbers in the
-#'   string as dictated by `dp`.
-#'   
-#' @param x a string of vector of strings which may have a number within
-#' @param dp digits to round to
+#' @param x a `Ryacas` symbolic expression
+#' @param type choose either `fraction` for fractional form or
+#'   `round` to round to `digits`
+#' @param digits required when using `round`
 #' 
-#' @return an object the same length as `x` but with all numbers rounded as per `dp`
-#' 
+#' @return a `Ryacas` symbolic expression
 #' @export
-string_round <- function(x, dp = 3, threshold = 1e-6) {
-  pat <- "(-)?[[:digit:]]+\\.[[:digit:]]*"
-  m <- gregexpr(pat, x)
-  regmatches(x,m) <- 
-    lapply(regmatches(x,m), 
-      function(X) { 
-        ifelse(abs(as.numeric(X)) < threshold, 0,
-        round(as.numeric(X), dp))
-        })
-  x
+simplify_ryacas <- function(x, type = 'fraction', digits = 3) {
+  if (is.null(x$yacas_cmd))
+    return(x)
+  else if (x$is_mat) {
+    d <- dim(x)
+    for (i in 1:d[1]) {
+      for (j in 1:d[2]) {
+        x[i, j] <- simplify_fn(x[i, j], type, digits)$yacas_cmd
+      }
+    }
+  } else if (x$is_vec) {
+    d <- length(x)
+    for (i in 1:d) {
+      x[i] <- simplify_fn(x[i], type, digits)$yacas_cmd
+    }
+  } else {
+    x <- simplify_fn(x, type, digits)
+  }
+  return(x)
 }
 
-#' Fractions of numbers in a string
-#' 
-#' Uses `MASS::fractions` to turn decimal numbers in a string into fractions.
-#' 
-#' @param x the string or vector of strings
-#' 
-#' @return an object the same length as `x` but with all numbers turned to fractions
-#' 
-#' @export
-string_fraction <- function(x, threshold = 1e-6) {
-  pat <- "(-)?[[:digit:]]+\\.[[:digit:]]*"
-  m <- gregexpr(pat, x)
-  regmatches(x,m) <- 
-    lapply(regmatches(x,m), 
-      function(X) {
-        ifelse(abs(as.numeric(X)) < threshold, 0,
-               MASS::fractions(as.numeric(X)))
-                          })
-  x
+simplify_fn <- function(x, type = 'fraction', digits = 3) {
+  z <- as.character(eval(parse(text = as.character(x$yacas_cmd)))) 
+  if (type == 'fraction') 
+    y <- stringr::str_replace_all(
+      z,
+      strex::str_extract_numbers(
+        z,
+        sci = T,
+        decimals = T,
+        negs = T,
+        leave_as_string = T
+      )[[1]],
+      as.character(MASS::fractions(
+        strex::str_extract_numbers(
+          z,
+          sci = T,
+          decimals = T,
+          negs = T
+        )[[1]]
+      ))
+    )
+  else if (type == 'round')
+    y <- stringr::str_replace_all(
+      z,
+      strex::str_extract_numbers(
+        z,
+        sci = T,
+        decimals = T,
+        negs = T,
+        leave_as_string = T
+      )[[1]],
+      as.character(round(
+        strex::str_extract_numbers(
+          z,
+          sci = T,
+          decimals = T,
+          negs = T
+        )[[1]],
+        digits = digits
+      ))
+    )
+  else
+    return(x)
+  if (length(y) == 0)
+    return(Ryacas::ysym(0))
+  else
+    return(Ryacas::ysym(y))
 }
 
 #' Impute a matrix into another
