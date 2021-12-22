@@ -9,9 +9,9 @@
 #' 
 #' @export
 parentheses <- function(x) {
-xx <- parentheses_fn(x, 't')
-xx <- parentheses_fn(xx, 'integrate')
-xx <- parentheses_fn(xx, 'deriv')
+  xx <- parentheses_fn(x, 't')
+  xx <- parentheses_fn(xx, 'integrate')
+  xx <- parentheses_fn(xx, 'deriv')
 return(xx)
 }
 
@@ -76,4 +76,99 @@ bracket_count <- function(x, index, start = '(', end = ')') {
     i <- i + 1
   }
   return(message('index not found'))
+}
+
+#' Simplify trigonometric `ysym` objects
+#' 
+#' Simplify `ysym` objects with trig functions to either decimal or fractions
+#' 
+#' @param x the `ysym` object
+#' @param type if `fraction` then will return the fractional result. If 'round', will 
+#'   return the decimal result
+#'   
+#' @return a ysym object
+#' @export
+simplify_trig <- function(x, type = 'fraction', ...) {
+  ysym(apply(as_r(x$yacas_cmd), c(1, 2), 
+     function(y) { 
+       if (type == 'round')
+         string_round(as.character(eval(parse(text = y))), ...)
+       else if(type == 'fraction')
+         string_fraction(as.character(eval(parse(text = y))), ...)
+       else
+         as.character(eval(parse(text = y)))
+       }))
+}
+
+#' Round numbers in a string
+#' 
+#' Vectorised function that takes a string (or vector of) and rounds any numbers in the
+#'   string as dictated by `dp`.
+#'   
+#' @param x a string of vector of strings which may have a number within
+#' @param dp digits to round to
+#' 
+#' @return an object the same length as `x` but with all numbers rounded as per `dp`
+#' 
+#' @export
+string_round <- function(x, dp = 3, threshold = 1e-6) {
+  pat <- "(-)?[[:digit:]]+\\.[[:digit:]]*"
+  m <- gregexpr(pat, x)
+  regmatches(x,m) <- 
+    lapply(regmatches(x,m), 
+      function(X) { 
+        ifelse(abs(as.numeric(X)) < threshold, 0,
+        round(as.numeric(X), dp))
+        })
+  x
+}
+
+#' Fractions of numbers in a string
+#' 
+#' Uses `MASS::fractions` to turn decimal numbers in a string into fractions.
+#' 
+#' @param x the string or vector of strings
+#' 
+#' @return an object the same length as `x` but with all numbers turned to fractions
+#' 
+#' @export
+string_fraction <- function(x, threshold = 1e-6) {
+  pat <- "(-)?[[:digit:]]+\\.[[:digit:]]*"
+  m <- gregexpr(pat, x)
+  regmatches(x,m) <- 
+    lapply(regmatches(x,m), 
+      function(X) {
+        ifelse(abs(as.numeric(X)) < threshold, 0,
+               MASS::fractions(as.numeric(X)))
+                          })
+  x
+}
+
+#' Impute a matrix into another
+#' 
+#' Imputes a matrix into another at the specified rows and columns
+#' 
+#' @param x the parent matrix which will be imputed. Note, this matrix must be at least the same
+#'   dimensions as `y`
+#' @param y the matrix that will be imputed into `x`
+#' @param rows the rows in `x` where the rows of `y` will be imputed. Note that it is assumed that
+#'   the rows in `y` are ordered so that they will go into `x` as specified by the rows argument
+#' @param cols optional argument used when not dealing with a square `y` matrix in which the columns
+#'   and rows for imputation are the same.Defaults to `NULL`.  When imputing finite element stiffness 
+#'   matrices, this will usually be 'NULL'  Functions the same as `rows` but for columns.
+#' @param replace `boolean` for whether `y` will replace `x` at these positions or be added to `x`. 
+#'   Typically in FEA, added is usual so the default value of `FALSE` would be used in this case.
+#'   
+#' @return a matrix with the same dimensions as `x`
+#' 
+#' @export
+impute_matrix <- function(x, y, rows, cols = NULL, replace = FALSE) {
+  if (is.null(cols)) cols <- rows
+  for (i in 1:length(rows))
+    for (j in 1:length(cols))
+      if (replace)
+        x[rows[i], cols[j]] <- y[i, j]$yacas_cmd
+      else
+        x[rows[i], cols[j]] <- (x[rows[i], cols[j]] + y[i, j])$yacas_cmd
+    return(x)
 }

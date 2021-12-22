@@ -12,13 +12,17 @@
 #' @param vars an optional `list` which holds named `ysym` objects
 #'   and variables which feature in `eq` or in the variables that
 #'   `eq` refers to.
+#'   
+#' @param Ryacas_output `Bool` for whether the output is a `list` of 
+#'   latex expressions which can be printed (`F`) or a single `ysym`
+#'   object which can undergo further manipulations by `Ryacas`
 #' 
 #' @return a `list` of the following:
 #'   1. The equation after multiplication and before substitution
 #'   2. The equation after multiplication and after substitution
 #'   3. The final solution
 #' @export
-sub_eq <- function(eq, ..., vars = NULL) {
+sub_eq <- function(eq, ..., vars = NULL, Ryacas_output = F) {
   var_names <- c(names(unlist(vars)), names(list(...)))
   vn <- apply(sapply(var_names, function(x) x == YACAS_cmds), 2, any)
   if (any(vn))
@@ -50,8 +54,11 @@ sub_eq <- function(eq, ..., vars = NULL) {
   f6 <- sub_latex(f3$yacas_cmd, values, FALSE) # error here
   f7 <- f3
   f7$yacas_cmd <- f6
-  f7 <- Ryacas::tex(Ryacas::simplify(f7))
-  return(list(f0, f1, f4, f5, f7))
+  f7 <- Ryacas::simplify(f7)
+  if (Ryacas_output)
+    return(f7)
+  else
+    return(list(f0, f1, f4, f5, Ryacas::tex(f7)))
 }
 
 #' Substitute variables in equation but don't solve

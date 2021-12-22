@@ -4,7 +4,7 @@
 \alias{sub_eq}
 \title{Substitute variables in equations without simplifying}
 \usage{
-sub_eq(eq, ..., vars = NULL)
+sub_eq(eq, ..., vars = NULL, Ryacas_output = F)
 }
 \arguments{
 \item{eq}{the string representation of the equation to solve}
@@ -17,6 +17,10 @@ input the variables as a \code{list}.}
 \item{vars}{an optional \code{list} which holds named \code{ysym} objects
 and variables which feature in \code{eq} or in the variables that
 \code{eq} refers to.}
+
+\item{Ryacas_output}{\code{Bool} for whether the output is a \code{list} of
+latex expressions which can be printed (\code{F}) or a single \code{ysym}
+object which can undergo further manipulations by \code{Ryacas}}
 }
 \value{
 a \code{list} of the following:
